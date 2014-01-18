@@ -3,19 +3,29 @@ require 'formula'
 class Openssh < Formula
   homepage 'http://www.openssh.com/'
   url 'http://ftp5.usa.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-6.4p1.tar.gz'
-  version '6.4p1'
+  version '6.4p1.1'
   sha1 'cf5fe0eb118d7e4f9296fbc5d6884965885fc55d'
 
   option 'with-brewed-openssl', 'Build with Homebrew OpenSSL instead of the system version'
+  option 'with-keychain-support', 'Add native OS X Keychain and Launch Daemon support to ssh-agent'
 
   depends_on 'openssl' if build.with? 'brewed-openssl'
   depends_on 'ldns' => :optional
   depends_on 'pkg-config' => :build if build.with? "ldns"
 
-  # Note that the keychain and GSSAPI patches have been removed as
-  # they no longer apply against 6.4p1. Pull requests welcome!
+  def patches
+    p = []
+    # KeyChain support for OSX
+    p << 'https://gist.github.com/patbaker82/8486469/raw/3e6d15bb8f7aa0c24c28733e5cfbfedaec4a8a69/openssh-6.4p1.patch' if build.with? 'keychain-support'
+    p
+  end
 
   def install
+    if build.include? "with-keychain-support"
+        ENV.append "CPPFLAGS", "-D__APPLE_LAUNCHD__ -D__APPLE_KEYCHAIN__"
+        ENV.append "LDFLAGS", "-framework CoreFoundation -framework SecurityFoundation -framework Security"
+    end
+
     args = %W[
       --with-libedit
       --with-kerberos5
